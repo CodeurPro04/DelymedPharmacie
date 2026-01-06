@@ -1,24 +1,41 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// app/_layout.tsx
 import { Stack } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import Colors from '../constants/Colors';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
+    <SafeAreaProvider>
       <StatusBar style="auto" />
-    </ThemeProvider>
+      <Stack screenOptions={{
+        headerStyle: {
+          backgroundColor: Colors.white,
+        },
+        headerTintColor: Colors.primaryDark,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+        contentStyle: {
+          backgroundColor: Colors.background,
+        },
+      }}>
+        {/* Point d'entrée */}
+        <Stack.Screen 
+          name="index" 
+          options={{ 
+            headerShown: false 
+          }} 
+        />
+        
+        {/* Tabs principales */}
+        <Stack.Screen 
+          name="(tabs)" 
+          options={{ 
+            headerShown: false 
+          }} 
+        />
+      </Stack>
+    </SafeAreaProvider>
   );
 }
