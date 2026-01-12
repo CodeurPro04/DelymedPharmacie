@@ -233,7 +233,7 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* Alertes importantes */}
+      {/* Alertes importantes 
       <View style={[styles.alertCard, GlobalStyles.cardElevated]}>
         <View style={styles.alertHeader}>
           <MaterialCommunityIcons name="alert-circle" size={24} color={Colors.warning} />
@@ -273,7 +273,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </View> */}
 
       {/* Message de bienvenue */}
       <View style={[styles.welcomeCard, GlobalStyles.cardElevated]}>
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.white,
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: 70,
     paddingBottom: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,

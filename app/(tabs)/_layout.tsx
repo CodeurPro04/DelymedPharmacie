@@ -21,7 +21,7 @@ export default function TabLayout() {
           fontWeight: '500',
         },
         headerStyle: {
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.primary,
           elevation: 0,
           shadowOpacity: 0,
         },
