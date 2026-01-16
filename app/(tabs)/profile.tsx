@@ -1,42 +1,48 @@
-// app/(tabs)/profile.tsx
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Colors from '../../constants/Colors';
 import { GlobalStyles } from '../../constants/Styles';
+import { getProfile, setAuth } from '../../lib/storage';
+import { router } from 'expo-router';
 
 export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
-  const pharmacyInfo = {
+  const [profile, setProfile] = useState({
     name: 'Pharmacie Delymed',
-    address: 'Rue des Jardins, Plateau, Abidjan, Côte d\'Ivoire',
+    address: "Rue des Jardins, Plateau, Abidjan, Côte d'Ivoire",
     phone: '+225 01 02 03 04 05',
-    email: 'contact@pharmaciedelimed.ci',
+    email: 'contact@pharmaciedelymed.ci',
     licenseNumber: 'PH-CI-2024-001',
     verified: true,
     memberSince: 'Janvier 2024',
-  };
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadProfile = async () => {
+        const stored = await getProfile();
+        setProfile((prev) => ({
+          ...prev,
+          ...stored,
+        }));
+      };
+      loadProfile();
+    }, [])
+  );
 
   const menuItems = [
     {
       title: 'Informations pharmacie',
       icon: 'business',
       items: [
-        { icon: 'location', label: 'Adresse', value: pharmacyInfo.address },
-        { icon: 'call', label: 'Téléphone', value: pharmacyInfo.phone },
-        { icon: 'mail', label: 'Email', value: pharmacyInfo.email },
-        { icon: 'document-text', label: 'N° Licence', value: pharmacyInfo.licenseNumber },
+        { icon: 'location', label: 'Adresse', value: profile.address },
+        { icon: 'call', label: 'Téléphone', value: profile.phone },
+        { icon: 'mail', label: 'Email', value: profile.email },
+        { icon: 'document-text', label: 'N° Licence', value: profile.licenseNumber },
       ],
     },
     {
@@ -92,13 +98,13 @@ export default function ProfileScreen() {
         {
           type: 'link',
           icon: 'headset',
-          label: 'Centre d\'aide',
-          onPress: () => Alert.alert('Support', 'Ouvrir le centre d\'aide'),
+          label: "Centre d'aide",
+          onPress: () => Alert.alert('Support', "Ouvrir le centre d'aide"),
         },
         {
           type: 'link',
           icon: 'document-text',
-          label: 'Conditions d\'utilisation',
+          label: "Conditions d'utilisation",
           onPress: () => Alert.alert('CGU', 'Voir les conditions'),
         },
         {
@@ -114,76 +120,80 @@ export default function ProfileScreen() {
   const stats = [
     { label: 'Commandes ce mois', value: '142', change: '+12%' },
     { label: 'Clients actifs', value: '89', change: '+8%' },
-    { label: 'Satisfaction', value: '4.8/5', change: '▲ 0.2' },
+    { label: 'Satisfaction', value: '4.8/5', change: '+0.2' },
   ];
 
   const handleEditProfile = () => {
     setIsEditing(!isEditing);
-    Alert.alert('Modification', isEditing ? 'Modifications enregistrées' : 'Mode édition activé');
+    Alert.alert(
+      'Modification',
+      isEditing ? 'Modifications enregistrées' : 'Mode édition activé'
+    );
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnexion', style: 'destructive', onPress: () => console.log('Logged out') },
-      ]
-    );
+    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnexion',
+        style: 'destructive',
+        onPress: async () => {
+          await setAuth(false);
+          router.replace('/auth/login');
+        },
+      },
+    ]);
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* En-tête avec photo et infos */}
       <View style={[styles.header, GlobalStyles.card]}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Ionicons name="business" size={48} color={Colors.primary} />
             </View>
-            {pharmacyInfo.verified && (
+            {profile.verified && (
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark" size={16} color={Colors.white} />
               </View>
             )}
           </View>
-          
+
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.pharmacyName}>{pharmacyInfo.name}</Text>
+              <Text style={styles.pharmacyName}>{profile.name}</Text>
               <TouchableOpacity onPress={handleEditProfile} style={styles.editButton}>
-                <Ionicons 
-                  name={isEditing ? 'checkmark' : 'pencil'} 
-                  size={20} 
-                  color={isEditing ? Colors.success : Colors.primary} 
+                <Ionicons
+                  name={isEditing ? 'checkmark' : 'pencil'}
+                  size={20}
+                  color={isEditing ? Colors.success : Colors.primary}
                 />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.verificationRow}>
-              <Text style={styles.memberSince}>Membre depuis {pharmacyInfo.memberSince}</Text>
+              <Text style={styles.memberSince}>Membre depuis {profile.memberSince}</Text>
               <View style={styles.verificationStatus}>
                 <Text style={styles.verificationText}>
-                  {pharmacyInfo.verified ? 'Vérifié ✓' : 'Non vérifié'}
+                  {profile.verified ? 'Vérifié ✓' : 'Non vérifié'}
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Statistiques rapides */}
         <View style={styles.statsContainer}>
           {stats.map((stat, index) => (
             <View key={index} style={styles.statItem}>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={[
-                styles.statChange,
-                { color: stat.change.startsWith('+') || stat.change.includes('▲') 
-                  ? Colors.success 
-                  : Colors.error }
-              ]}>
+              <Text
+                style={[
+                  styles.statChange,
+                  { color: stat.change.startsWith('+') ? Colors.success : Colors.error },
+                ]}
+              >
                 {stat.change}
               </Text>
             </View>
@@ -191,22 +201,18 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Menu sections */}
       {menuItems.map((section, sectionIndex) => (
         <View key={sectionIndex} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name={section.icon as any} size={20} color={Colors.primary} />
             <Text style={styles.sectionTitle}>{section.title}</Text>
           </View>
-          
+
           <View style={styles.sectionContent}>
             {section.items.map((item, itemIndex) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={itemIndex}
-                style={[
-                  styles.menuItem,
-                  itemIndex === section.items.length - 1 && styles.lastMenuItem,
-                ]}
+                style={[styles.menuItem, itemIndex === section.items.length - 1 && styles.lastMenuItem]}
                 onPress={item.onPress}
                 disabled={item.type === 'toggle'}
               >
@@ -223,7 +229,7 @@ export default function ProfileScreen() {
                     )}
                   </View>
                 </View>
-                
+
                 {item.type === 'toggle' ? (
                   <Switch
                     value={item.value}
@@ -240,21 +246,18 @@ export default function ProfileScreen() {
         </View>
       ))}
 
-      {/* Boutons d'action */}
       <View style={styles.actionsContainer}>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.secondaryButton]}
-          onPress={handleLogout}
-        >
+        <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={handleLogout}>
           <Ionicons name="log-out" size={20} color={Colors.error} />
           <Text style={styles.secondaryButtonText}>Déconnexion</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Version de l'app */}
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>Delymed Pharmacie v1.1.0</Text>
-        <Text style={styles.copyrightText}>© {new Date().getFullYear()} Tous droits réservés</Text>
+        <Text style={styles.copyrightText}>
+          © {new Date().getFullYear()} Tous droits réservés
+        </Text>
       </View>
     </ScrollView>
   );
@@ -313,6 +316,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+    gap: 12,
   },
   pharmacyName: {
     fontSize: 22,
@@ -394,7 +398,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: 12,
     overflow: 'hidden',
-    ...GlobalStyles.card,
     paddingHorizontal: 0,
   },
   menuItem: {
@@ -447,14 +450,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-  },
-  primaryButton: {
-    backgroundColor: Colors.primary,
-  },
-  primaryButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '600',
   },
   secondaryButton: {
     backgroundColor: Colors.errorLight,

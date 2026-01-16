@@ -8,7 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { GlobalStyles } from '../../constants/Styles';
+import Colors from '../../constants/Colors';
 
 interface ButtonProps {
   title: string;
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   primaryButton: {
-    backgroundColor: GlobalStyles.button.backgroundColor,
+    backgroundColor: Colors.primary,
   },
   secondaryButton: {
     backgroundColor: '#00C853',

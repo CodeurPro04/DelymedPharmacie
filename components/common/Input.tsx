@@ -8,7 +8,6 @@ import {
   TextInputProps,
   TouchableOpacity,
 } from 'react-native';
-import { GlobalStyles } from '../../constants/Styles';
 import Colors from '../../constants/Colors';
 
 interface InputProps extends TextInputProps {
@@ -99,7 +98,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    ...GlobalStyles.label,
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.darkGray,
     marginBottom: 8,
   },
   inputContainer: {
@@ -141,7 +142,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   errorText: {
-    ...GlobalStyles.errorText,
+    color: Colors.error,
+    fontSize: 12,
     marginTop: 4,
   },
 });

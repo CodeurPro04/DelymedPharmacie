@@ -1,7 +1,6 @@
-// app/(tabs)/orders.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -11,108 +10,104 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Colors from '../../constants/Colors';
+import { useFocusEffect } from '@react-navigation/native';
+import { getOrders, Order } from '../../lib/storage';
 
 export default function PharmacyOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  const orders = [
-    {
-      id: 'PH-001',
-      customer: 'Kouassi Jean',
-      status: 'pending',
-      items: 3,
-      total: '45000 FCFA',
-      time: '10:30',
-      isUrgent: false,
-    },
-    {
-      id: 'PH-002',
-      customer: 'Amani Marie',
-      status: 'processing',
-      items: 2,
-      total: '28750 FCFA',
-      time: '11:15',
-      isUrgent: true,
-    },
-    {
-      id: 'PH-003',
-      customer: 'Brou Didier',
-      status: 'ready',
-      items: 5,
-      total: '62300 FCFA',
-      time: '11:45',
-      isUrgent: false,
-    },
-    {
-      id: 'PH-004',
-      customer: 'Koné Fatou',
-      status: 'pending',
-      items: 1,
-      total: '12500 FCFA',
-      time: '12:00',
-      isUrgent: false,
-    },
-    {
-      id: 'PH-005',
-      customer: 'Yao Paul',
-      status: 'ready',
-      items: 4,
-      total: '38900 FCFA',
-      time: '12:30',
-      isUrgent: true,
-    },
-  ];
+  const loadOrders = useCallback(async () => {
+    const data = await getOrders();
+    setOrders(data);
+  }, []);
 
-  const filters = [
-    { id: 'all', label: 'Toutes', count: 5 },
-    { id: 'pending', label: 'En attente', count: 2 },
-    { id: 'processing', label: 'En cours', count: 1 },
-    { id: 'ready', label: 'Prêtes', count: 2 },
-    { id: 'urgent', label: 'Urgentes', count: 2 },
-  ];
+  useFocusEffect(
+    useCallback(() => {
+      loadOrders();
+    }, [loadOrders])
+  );
 
-  const filteredOrders = orders.filter(order => {
-    if (filter === 'all') return true;
-    if (filter === 'urgent') return order.isUrgent;
-    return order.status === filter;
-  });
+  const filters = useMemo(
+    () => [
+      { id: 'all', label: 'Toutes', count: orders.length },
+      {
+        id: 'pending_pharmacy',
+        label: 'En attente',
+        count: orders.filter((o) => o.status === 'pending_pharmacy').length,
+      },
+      {
+        id: 'accepted',
+        label: 'Acceptees',
+        count: orders.filter((o) => o.status === 'accepted').length,
+      },
+      {
+        id: 'preparing',
+        label: 'En preparation',
+        count: orders.filter((o) => o.status === 'preparing').length,
+      },
+      { id: 'ready', label: 'Pretes', count: orders.filter((o) => o.status === 'ready').length },
+      {
+        id: 'assigned',
+        label: 'Assignees',
+        count: orders.filter((o) => o.status === 'assigned').length,
+      },
+      {
+        id: 'picked_up',
+        label: 'Recuperees',
+        count: orders.filter((o) => o.status === 'picked_up').length,
+      },
+      { id: 'urgent', label: 'Urgentes', count: orders.filter((o) => o.isUrgent).length },
+    ],
+    [orders]
+  );
+
+  const filteredOrders = useMemo(() => {
+    if (filter === 'all') return orders;
+    if (filter === 'urgent') return orders.filter((order) => order.isUrgent);
+    return orders.filter((order) => order.status === filter);
+  }, [filter, orders]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+    loadOrders().finally(() => setRefreshing(false));
   };
 
   const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'ready': 
-        return { color: '#10B981', label: 'Prête', icon: 'checkmark-circle' };
-      case 'processing': 
-        return { color: '#F59E0B', label: 'En cours', icon: 'sync' };
-      case 'pending': 
+      case 'ready':
+        return { color: '#10B981', label: 'Prete', icon: 'checkmark-circle' };
+      case 'preparing':
+        return { color: '#F59E0B', label: 'En preparation', icon: 'sync' };
+      case 'accepted':
+        return { color: '#6366F1', label: 'Acceptee', icon: 'checkmark' };
+      case 'pending_pharmacy':
         return { color: '#3B82F6', label: 'En attente', icon: 'time' };
-      default: 
+      case 'assigned':
+        return { color: '#8B5CF6', label: 'Assignee', icon: 'person' };
+      case 'picked_up':
+        return { color: '#8B5CF6', label: 'Recuperee', icon: 'bag-check' };
+      default:
         return { color: '#6B7280', label: 'Inconnue', icon: 'help-circle' };
     }
   };
 
-  const renderOrderItem = ({ item }: { item: any }) => {
+  const renderOrderItem = ({ item }: { item: Order }) => {
     const statusConfig = getStatusConfig(item.status);
-    
+
     return (
       <TouchableOpacity
         style={styles.orderCard}
         onPress={() => router.push(`/(modals)/order-details?id=${item.id}`)}
         activeOpacity={0.7}
       >
-        {/* Header */}
         <View style={styles.orderHeader}>
           <View style={styles.orderHeaderLeft}>
             <Text style={styles.orderId}>#{item.id}</Text>
             <Text style={styles.orderTime}>{item.time}</Text>
           </View>
-          
+
           {item.isUrgent && (
             <View style={styles.urgentBadge}>
               <Ionicons name="flash" size={14} color="#fff" />
@@ -120,18 +115,16 @@ export default function PharmacyOrdersScreen() {
           )}
         </View>
 
-        {/* Customer */}
         <Text style={styles.customerName}>{item.customer}</Text>
 
-        {/* Info Row */}
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <Ionicons name="cube-outline" size={14} color="#6B7280" />
             <Text style={styles.infoText}>{item.items} articles</Text>
           </View>
-          
+
           <View style={styles.separator} />
-          
+
           <View style={styles.infoItem}>
             <Ionicons name={statusConfig.icon as any} size={14} color={statusConfig.color} />
             <Text style={[styles.infoText, { color: statusConfig.color }]}>
@@ -140,7 +133,28 @@ export default function PharmacyOrdersScreen() {
           </View>
         </View>
 
-        {/* Footer */}
+        <View style={styles.typeRow}>
+          <View style={[styles.typeBadge, item.type === 'prescription' && styles.typeBadgePrescription]}>
+            <Text
+              style={[
+                styles.typeText,
+                item.type === 'prescription' && styles.typeTextPrescription,
+              ]}
+            >
+              {item.type === 'prescription' ? 'Ordonnance' : 'Liste'}
+            </Text>
+          </View>
+          <View style={styles.badgeRow}>
+            {item.status === 'assigned' && (
+              <View style={styles.assignedBadge}>
+                <Ionicons name="person" size={12} color="#fff" />
+                <Text style={styles.assignedBadgeText}>Livreur assigne</Text>
+              </View>
+            )}
+            {item.isUrgent && <Text style={styles.urgentText}>Urgent</Text>}
+          </View>
+        </View>
+
         <View style={styles.orderFooter}>
           <Text style={styles.orderTotal}>{item.total}</Text>
           <View style={styles.arrowButton}>
@@ -153,21 +167,14 @@ export default function PharmacyOrdersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Commandes</Text>
           <Text style={styles.subtitle}>{filteredOrders.length} commande(s)</Text>
         </View>
-        <TouchableOpacity
-          style={styles.newOrderButton}
-          onPress={() => router.push('/(modals)/new-order')}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.newOrderButtonPlaceholder} />
       </View>
 
-      {/* Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
           <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
@@ -175,7 +182,7 @@ export default function PharmacyOrdersScreen() {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statValue}>
-              {orders.filter(o => o.status === 'pending').length}
+              {orders.filter((o) => o.status === 'pending_pharmacy').length}
             </Text>
             <Text style={styles.statLabel}>En attente</Text>
           </View>
@@ -187,9 +194,9 @@ export default function PharmacyOrdersScreen() {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statValue}>
-              {orders.filter(o => o.status === 'processing').length}
+              {orders.filter((o) => o.status === 'preparing').length}
             </Text>
-            <Text style={styles.statLabel}>En cours</Text>
+            <Text style={styles.statLabel}>Preparation</Text>
           </View>
         </View>
 
@@ -199,47 +206,30 @@ export default function PharmacyOrdersScreen() {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statValue}>
-              {orders.filter(o => o.status === 'ready').length}
+              {orders.filter((o) => o.status === 'ready').length}
             </Text>
-            <Text style={styles.statLabel}>Prêtes</Text>
+            <Text style={styles.statLabel}>Pretes</Text>
           </View>
         </View>
       </View>
 
-      {/* Filters */}
       <View style={styles.filtersSection}>
         <Text style={styles.sectionLabel}>Filtrer</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersContent}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContent}>
           {filters.map((filterItem) => {
             const isActive = filter === filterItem.id;
             return (
               <TouchableOpacity
                 key={filterItem.id}
-                style={[
-                  styles.filterChip,
-                  isActive && styles.filterChipActive,
-                ]}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
                 onPress={() => setFilter(filterItem.id)}
                 activeOpacity={0.7}
               >
-                <Text style={[
-                  styles.filterChipText,
-                  isActive && styles.filterChipTextActive,
-                ]}>
+                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                   {filterItem.label}
                 </Text>
-                <View style={[
-                  styles.filterBadge,
-                  isActive && styles.filterBadgeActive,
-                ]}>
-                  <Text style={[
-                    styles.filterBadgeText,
-                    isActive && styles.filterBadgeTextActive,
-                  ]}>
+                <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
+                  <Text style={[styles.filterBadgeText, isActive && styles.filterBadgeTextActive]}>
                     {filterItem.count}
                   </Text>
                 </View>
@@ -249,27 +239,20 @@ export default function PharmacyOrdersScreen() {
         </ScrollView>
       </View>
 
-      {/* Orders List */}
       <FlatList
         data={filteredOrders}
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.ordersList}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#3B82F6"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
             <Text style={styles.emptyTitle}>Aucune commande</Text>
             <Text style={styles.emptyText}>
-              {filter !== 'all' 
-                ? `Aucune commande ${filters.find(f => f.id === filter)?.label.toLowerCase()}`
-                : 'Créez votre première commande'}
+              {filter !== 'all'
+                ? `Aucune commande ${filters.find((f) => f.id === filter)?.label.toLowerCase()}`
+                : 'Creez votre premiere commande'}
             </Text>
           </View>
         }
@@ -316,6 +299,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  newOrderButtonPlaceholder: {
+    width: 44,
+    height: 44,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -502,6 +489,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  typeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  assignedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  assignedBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  typeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+  },
+  typeBadgePrescription: {
+    backgroundColor: '#FEF3C7',
+  },
+  typeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1D4ED8',
+  },
+  typeTextPrescription: {
+    color: '#B45309',
+  },
+  urgentText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   orderTotal: {
     fontSize: 20,

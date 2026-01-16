@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="900" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="900" fill="#F8F9FA"/>
+  <text x="700" y="60" text-anchor="middle" font-size="28" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">
+    Flux Pro - Client / Pharmacie / Livreur
+  </text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2196F3"/>
+    </marker>
+  </defs>
+
+  <!-- Client -->
+  <rect x="60" y="120" width="380" height="160" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="80" y="150" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Client (App)</text>
+  <text x="80" y="180" font-size="14" font-family="Arial, sans-serif" fill="#424242">1. Creation commande</text>
+  <text x="80" y="205" font-size="14" font-family="Arial, sans-serif" fill="#424242">   - Liste ou ordonnance</text>
+  <text x="80" y="230" font-size="14" font-family="Arial, sans-serif" fill="#424242">2. Pre-autorisation paiement</text>
+  <text x="80" y="255" font-size="14" font-family="Arial, sans-serif" fill="#424242">3. Suivi temps reel</text>
+
+  <!-- Serveur -->
+  <rect x="510" y="120" width="380" height="160" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="530" y="150" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Serveur / Routage</text>
+  <text x="530" y="180" font-size="14" font-family="Arial, sans-serif" fill="#424242">4. Creation dossier commande</text>
+  <text x="530" y="205" font-size="14" font-family="Arial, sans-serif" fill="#424242">5. Dispatch pharmacie</text>
+  <text x="530" y="230" font-size="14" font-family="Arial, sans-serif" fill="#424242">6. Notifications push</text>
+
+  <!-- Pharmacie -->
+  <rect x="960" y="120" width="380" height="160" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="980" y="150" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Pharmacie (App)</text>
+  <text x="980" y="180" font-size="14" font-family="Arial, sans-serif" fill="#424242">7. Recoit commande</text>
+  <text x="980" y="205" font-size="14" font-family="Arial, sans-serif" fill="#424242">8. Accepte et prepare</text>
+  <text x="980" y="230" font-size="14" font-family="Arial, sans-serif" fill="#424242">9. Marque PRETE</text>
+
+  <rect x="960" y="320" width="380" height="140" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="980" y="350" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Commande prete</text>
+  <text x="980" y="380" font-size="14" font-family="Arial, sans-serif" fill="#424242">10. OTP 6 chiffres</text>
+  <text x="980" y="405" font-size="14" font-family="Arial, sans-serif" fill="#424242">11. OTP expire (20 min)</text>
+
+  <!-- Livreur -->
+  <rect x="510" y="320" width="380" height="140" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="530" y="350" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Livreur (App)</text>
+  <text x="530" y="380" font-size="14" font-family="Arial, sans-serif" fill="#424242">12. Voit course dispo</text>
+  <text x="530" y="405" font-size="14" font-family="Arial, sans-serif" fill="#424242">13. Accepte (ASSIGNED)</text>
+
+  <rect x="510" y="520" width="380" height="140" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="530" y="550" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Collecte</text>
+  <text x="530" y="580" font-size="14" font-family="Arial, sans-serif" fill="#424242">14. Arrive pharmacie</text>
+  <text x="530" y="605" font-size="14" font-family="Arial, sans-serif" fill="#424242">15. Saisit OTP</text>
+  <text x="530" y="630" font-size="14" font-family="Arial, sans-serif" fill="#424242">16. Statut: PICKED_UP</text>
+
+  <rect x="510" y="720" width="380" height="140" rx="16" ry="16" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3"/>
+  <text x="530" y="750" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Livraison</text>
+  <text x="530" y="780" font-size="14" font-family="Arial, sans-serif" fill="#424242">17. Preuve livraison</text>
+  <text x="530" y="805" font-size="14" font-family="Arial, sans-serif" fill="#424242">18. Statut: DELIVERED</text>
+
+  <rect x="60" y="320" width="380" height="160" rx="16" ry="16" fill="#E8F0FE" stroke="#0D47A1" stroke-width="3"/>
+  <text x="80" y="350" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#0D47A1">Statuts pro</text>
+  <text x="80" y="380" font-size="14" font-family="Arial, sans-serif" fill="#424242">CREATED -> PENDING_PHARMACY</text>
+  <text x="80" y="405" font-size="14" font-family="Arial, sans-serif" fill="#424242">ACCEPTED -> PREPARING -> READY</text>
+  <text x="80" y="430" font-size="14" font-family="Arial, sans-serif" fill="#424242">READY -> ASSIGNED -> PICKED_UP</text>
+  <text x="80" y="455" font-size="14" font-family="Arial, sans-serif" fill="#424242">PICKED_UP -> DELIVERED</text>
+
+  <!-- Arrows -->
+  <line x1="440" y1="200" x2="510" y2="200" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="890" y1="200" x2="960" y2="200" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1150" y1="280" x2="1150" y2="320" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="960" y1="390" x2="890" y2="390" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="700" y1="460" x2="700" y2="520" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="700" y1="660" x2="700" y2="720" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+</svg>

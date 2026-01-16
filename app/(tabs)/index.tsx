@@ -1,296 +1,247 @@
-// app/(tabs)/index.tsx
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import Colors from '../../constants/Colors';
-import { GlobalStyles } from '../../constants/Styles';
-
-const { width } = Dimensions.get('window');
+import { getMedications, getOrders, Order } from '../../lib/storage';
 
 export default function DashboardScreen() {
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [lowStockCount, setLowStockCount] = useState(0);
 
-  const stats = [
-    { 
-      title: "Commandes aujourd'hui", 
-      value: '12', 
-      icon: 'receipt', 
-      color: Colors.primary,
-      trend: '+2',
-      label: 'vs hier',
-      change: 'positive',
-    },
-    { 
-      title: 'À préparer', 
-      value: '5', 
-      icon: 'time', 
-      color: Colors.warning,
-      trend: '-1',
-      label: 'en attente',
-      change: 'neutral',
-    },
-    { 
-      title: 'Stock faible', 
-      value: '8', 
-      icon: 'alert', 
-      color: Colors.error,
-      trend: '+3',
-      label: 'attention',
-      change: 'negative',
-    },
-    { 
-      title: 'Revenus jour', 
-      value: '345,000', 
-      icon: 'cash', 
-      color: Colors.success,
-      trend: '+12%',
-      label: 'FCFA',
-      change: 'positive',
-    },
-  ];
-
-  const recentActivity = [
-    { id: 1, type: 'order', title: 'Nouvelle commande', description: 'Kouassi alex - Paracétamol 500mg', time: '10 min', amount: '5,400 FCFA' },
-    { id: 2, type: 'stock', title: 'Stock mis à jour', description: 'Ibuprofène 400mg - 12 unités', time: '30 min', status: 'warning' },
-    { id: 3, type: 'payment', title: 'Paiement reçu', description: 'Marie Martin - Carte bancaire', time: '1h', amount: '8,900 FCFA' },
-    { id: 4, type: 'delivery', title: 'Commande livrée', description: '#CMD-0456 - Livraison Express', time: '2h', status: 'success' },
-  ];
-
-  const performanceMetrics = [
-    { label: 'Taux de satisfaction', value: '94%', progress: 94, color: Colors.success },
-    { label: 'Commandes traitées', value: '98%', progress: 98, color: Colors.primary },
-    { label: 'Temps moyen préparation', value: '15 min', progress: 85, color: Colors.info },
-  ];
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+  const loadDashboard = useCallback(async () => {
+    const [ordersData, medications] = await Promise.all([getOrders(), getMedications()]);
+    setOrders(ordersData);
+    setLowStockCount(medications.filter((m) => m.stock < m.minStock).length);
   }, []);
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'order': return { icon: 'cart', color: Colors.primary };
-      case 'stock': return { icon: 'cube', color: Colors.warning };
-      case 'payment': return { icon: 'card', color: Colors.success };
-      case 'delivery': return { icon: 'checkmark-circle', color: Colors.secondary };
-      default: return { icon: 'notifications', color: Colors.gray };
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard])
+  );
+
+  const pendingCount = useMemo(
+    () => orders.filter((o) => o.status === 'pending_pharmacy').length,
+    [orders]
+  );
+  const acceptedCount = useMemo(
+    () => orders.filter((o) => o.status === 'accepted').length,
+    [orders]
+  );
+  const preparingCount = useMemo(
+    () => orders.filter((o) => o.status === 'preparing').length,
+    [orders]
+  );
+  const readyCount = useMemo(
+    () => orders.filter((o) => o.status === 'ready').length,
+    [orders]
+  );
+  const assignedCount = useMemo(
+    () => orders.filter((o) => o.status === 'assigned').length,
+    [orders]
+  );
+  const pickedUpCount = useMemo(
+    () => orders.filter((o) => o.status === 'picked_up').length,
+    [orders]
+  );
+
+  const totalRevenue = useMemo(() => {
+    const total = orders.reduce((acc, order) => {
+      const numeric = Number(order.total.replace(/[^\d]/g, ''));
+      return acc + (Number.isNaN(numeric) ? 0 : numeric);
+    }, 0);
+    return total.toLocaleString('fr-FR');
+  }, [orders]);
+
+  const recentOrders = useMemo(() => orders.slice(0, 3), [orders]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadDashboard().finally(() => setRefreshing(false));
+  }, [loadDashboard]);
+
+  const statusBadge = (status: Order['status']) => {
+    switch (status) {
+      case 'pending_pharmacy':
+        return { label: 'En attente', color: Colors.info, bg: Colors.infoLight };
+      case 'accepted':
+        return { label: 'Acceptee', color: Colors.secondary, bg: Colors.secondaryLight };
+      case 'preparing':
+        return { label: 'Preparation', color: Colors.warning, bg: Colors.warningLight };
+      case 'ready':
+        return { label: 'Prete', color: Colors.success, bg: Colors.successLight };
+      case 'assigned':
+        return { label: 'Assignee', color: Colors.info, bg: Colors.infoLight };
+      case 'picked_up':
+        return { label: 'Recuperee', color: Colors.secondary, bg: Colors.secondaryLight };
+      default:
+        return { label: 'Inconnue', color: Colors.gray, bg: Colors.lightGray };
     }
   };
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={Colors.primary}
-          colors={[Colors.primary]}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
       }
     >
-      {/* En-tête élégant */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
+      <View style={styles.headerCard}>
+        <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>Bon retour,</Text>
+            <Text style={styles.greeting}>Bonjour,</Text>
             <Text style={styles.pharmacyName}>Pharmacie Delymed</Text>
-            <View style={styles.locationBadge}>
+            <View style={styles.locationRow}>
               <Ionicons name="location" size={12} color={Colors.primary} />
               <Text style={styles.locationText}>Abidjan, Marcory</Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.notificationContainer}
-            onPress={() => router.push('/notifications')}
-          >
-            <View style={styles.notificationButton}>
-              <Ionicons name="notifications" size={22} color={Colors.primaryDark} />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationCount}>3</Text>
-              </View>
+          <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/notifications')}>
+            <Ionicons name="notifications" size={20} color={Colors.primaryDark} />
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationCount}>3</Text>
             </View>
           </TouchableOpacity>
         </View>
-        
-        {/* Date et heure */}
-        <View style={styles.dateContainer}>
-          <Ionicons name="calendar" size={16} color={Colors.primary} />
-          <Text style={styles.dateText}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} {new Date().getFullYear()}</Text>
-          <View style={styles.timeBadge}>
-            <Ionicons name="time" size={12} color={Colors.white} />
-            <Text style={styles.timeText}>{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
+
+        <View style={styles.headerStats}>
+          <View style={styles.headerStat}>
+            <Text style={styles.headerStatValue}>{orders.length}</Text>
+            <Text style={styles.headerStatLabel}>Commandes recues</Text>
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.headerStat}>
+            <Text style={styles.headerStatValue}>{pendingCount + preparingCount + acceptedCount}</Text>
+            <Text style={styles.headerStatLabel}>A traiter</Text>
           </View>
         </View>
-      </View>
 
-      {/* Statistiques en grille améliorée */}
-      <View style={styles.statsSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Aperçu du jour</Text>
-          <TouchableOpacity onPress={() => router.push('/analytics')}>
-            <Text style={styles.seeAllText}>Voir détails →</Text>
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/inventory')}>
+            <Ionicons name="cube" size={16} color={Colors.primary} />
+            <Text style={styles.actionText}>Inventaire</Text>
           </TouchableOpacity>
-        </View>
-        
-        <View style={styles.statsGrid}>
-          {stats.map((stat, index) => (
-            <View key={index} style={[styles.statCard, GlobalStyles.cardElevated]}>
-              <View style={styles.statHeader}>
-                <View style={[styles.statIconContainer, { backgroundColor: `${stat.color}15` }]}>
-                  <Ionicons name={stat.icon as any} size={20} color={stat.color} />
-                </View>
-                <View style={[
-                  styles.trendBadge,
-                  { backgroundColor: stat.change === 'positive' ? Colors.successLight : 
-                    stat.change === 'negative' ? Colors.errorLight : Colors.warningLight }
-                ]}>
-                  <Ionicons 
-                    name={stat.change === 'positive' ? 'trending-up' : 
-                           stat.change === 'negative' ? 'trending-down' : 'remove'} 
-                    size={12} 
-                    color={stat.change === 'positive' ? Colors.success : 
-                           stat.change === 'negative' ? Colors.error : Colors.warning} 
-                  />
-                  <Text style={[
-                    styles.trendText,
-                    { color: stat.change === 'positive' ? Colors.success : 
-                            stat.change === 'negative' ? Colors.error : Colors.warning }
-                  ]}>
-                    {stat.trend}
-                  </Text>
-                </View>
-              </View>
-              
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statCurrency}>{stat.label}</Text>
-              <Text style={styles.statTitle}>{stat.title}</Text>
-              
-              <View style={styles.statFooter}>
-                <View style={[styles.progressBar, { backgroundColor: `${stat.color}20` }]}>
-                  <View style={[
-                    styles.progressFill, 
-                    { 
-                      width: '75%',
-                      backgroundColor: stat.color,
-                    }
-                  ]} />
-                </View>
-              </View>
-            </View>
-          ))}
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/orders')}>
+            <Ionicons name="receipt" size={16} color={Colors.primary} />
+            <Text style={styles.actionText}>Commandes</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Activité récente */}
-      <View style={styles.activitySection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Activité récente</Text>
-          <TouchableOpacity onPress={() => router.push('/activity')}>
-            <Text style={styles.seeAllText}>Voir tout →</Text>
-          </TouchableOpacity>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Indicateurs cles</Text>
+        <TouchableOpacity onPress={() => router.push('/analytics')}>
+          <Text style={styles.sectionLink}>Voir analytics</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.kpiGrid}>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>A preparer</Text>
+          <Text style={styles.kpiValue}>{pendingCount}</Text>
+          <Text style={styles.kpiHint}>Commandes recues</Text>
         </View>
-        
-        <View style={styles.activityList}>
-          {recentActivity.map((activity) => {
-            const { icon, color } = getActivityIcon(activity.type);
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Acceptees</Text>
+          <Text style={styles.kpiValue}>{acceptedCount}</Text>
+          <Text style={styles.kpiHint}>A valider</Text>
+        </View>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Preparation</Text>
+          <Text style={styles.kpiValue}>{preparingCount}</Text>
+          <Text style={styles.kpiHint}>En cours</Text>
+        </View>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Pretes</Text>
+          <Text style={styles.kpiValue}>{readyCount}</Text>
+          <Text style={styles.kpiHint}>En attente d&lsquo;un livreur</Text>
+        </View>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Assignees</Text>
+          <Text style={styles.kpiValue}>{assignedCount}</Text>
+          <Text style={styles.kpiHint}>Livreur confirme</Text>
+        </View>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Revenus</Text>
+          <Text style={styles.kpiValue}>{totalRevenue}</Text>
+          <Text style={styles.kpiHint}>FCFA aujourd'hui</Text>
+        </View>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Stock faible</Text>
+          <Text style={styles.kpiValue}>{lowStockCount}</Text>
+          <Text style={styles.kpiHint}>Produits a verifier</Text>
+        </View>
+        <View style={styles.kpiCard}>
+          <Text style={styles.kpiLabel}>Recuperees</Text>
+          <Text style={styles.kpiValue}>{pickedUpCount}</Text>
+          <Text style={styles.kpiHint}>Pris en charge livreur</Text>
+        </View>
+      </View>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Commandes recentes</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/orders')}>
+          <Text style={styles.sectionLink}>Voir tout</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.listCard}>
+        {recentOrders.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="receipt-outline" size={32} color={Colors.mediumGray} />
+            <Text style={styles.emptyText}>Aucune commande pour le moment.</Text>
+          </View>
+        ) : (
+          recentOrders.map((order) => {
+            const badge = statusBadge(order.status);
             return (
-              <TouchableOpacity 
-                key={activity.id} 
-                style={[styles.activityItem, GlobalStyles.card]}
-                onPress={() => console.log('Activity pressed:', activity.id)}
+              <TouchableOpacity
+                key={order.id}
+                style={styles.orderRow}
+                onPress={() => router.push(`/(modals)/order-details?id=${order.id}`)}
               >
-                <View style={[styles.activityIcon, { backgroundColor: `${color}15` }]}>
-                  <Ionicons name={icon as any} size={20} color={color} />
+                <View>
+                  <Text style={styles.orderId}>#{order.id}</Text>
+                  <Text style={styles.orderCustomer}>{order.customer}</Text>
+                  <View style={styles.typeBadge}>
+                    <Text style={styles.typeBadgeText}>
+                      {order.type === 'prescription' ? 'Ordonnance' : 'Liste'}
+                    </Text>
+                  </View>
                 </View>
-                
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>{activity.title}</Text>
-                  <Text style={styles.activityDescription} numberOfLines={1}>
-                    {activity.description}
-                  </Text>
-                </View>
-                
-                <View style={styles.activityRight}>
-                  <Text style={styles.activityTime}>{activity.time}</Text>
-                  {activity.amount && (
-                    <Text style={styles.activityAmount}>{activity.amount}</Text>
-                  )}
+                <View style={styles.orderRight}>
+                  <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+                    <Text style={[styles.statusText, { color: badge.color }]}>{badge.label}</Text>
+                  </View>
+                  <Text style={styles.orderTotal}>{order.total}</Text>
                 </View>
               </TouchableOpacity>
             );
-          })}
-        </View>
+          })
+        )}
       </View>
 
-      {/* Alertes importantes 
-      <View style={[styles.alertCard, GlobalStyles.cardElevated]}>
-        <View style={styles.alertHeader}>
-          <MaterialCommunityIcons name="alert-circle" size={24} color={Colors.warning} />
-          <Text style={styles.alertTitle}>Alertes importantes</Text>
+      <View style={styles.insightCard}>
+        <View style={styles.insightHeader}>
+          <Text style={styles.sectionnTitle}>Conseil du jour</Text>
         </View>
-        
-        <View style={styles.alertsList}>
-          <View style={styles.alertItem}>
-            <View style={[styles.alertIcon, { backgroundColor: Colors.errorLight }]}>
-              <Ionicons name="warning" size={16} color={Colors.error} />
-            </View>
-            <View style={styles.alertContent}>
-              <Text style={styles.alertItemTitle}>8 médicaments en stock faible</Text>
-              <Text style={styles.alertItemText}>Commander rapidement pour éviter la rupture</Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.alertButton}
-              onPress={() => router.push('/(tabs)/inventory')}
-            >
-              <Text style={styles.alertButtonText}>Vérifier</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.alertItem}>
-            <View style={[styles.alertIcon, { backgroundColor: Colors.infoLight }]}>
-              <Ionicons name="time" size={16} color={Colors.info} />
-            </View>
-            <View style={styles.alertContent}>
-              <Text style={styles.alertItemTitle}>3 commandes en attente</Text>
-              <Text style={styles.alertItemText}>À préparer dans les 30 minutes</Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.alertButton, { backgroundColor: Colors.primary }]}
-              onPress={() => router.push('/(tabs)/orders')}
-            >
-              <Text style={[styles.alertButtonText, { color: Colors.white }]}>Traiter</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View> */}
-
-      {/* Message de bienvenue */}
-      <View style={[styles.welcomeCard, GlobalStyles.cardElevated]}>
-        <View style={styles.welcomeContent}>
-          <MaterialCommunityIcons name="pharmacy" size={32} color={Colors.primary} />
-          <View style={styles.welcomeText}>
-            <Text style={styles.welcomeTitle}>Bienvenue sur Delymed Pharmacie</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Gérez efficacement votre pharmacie avec nos outils professionnels
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          style={styles.welcomeButton}
-          onPress={() => router.push('/tour')}
-        >
-          <Text style={styles.welcomeButtonText}>Découvrir les fonctionnalités</Text>
+        <Text style={styles.insightText}>
+          Priorisez les commandes urgentes et anticipez les ruptures avec les alertes stock.
+        </Text>
+        <TouchableOpacity style={styles.insightButton} onPress={() => router.push('/tour')}>
+          <Text style={styles.insightButtonText}>Voir le tour rapide</Text>
           <Ionicons name="arrow-forward" size={16} color={Colors.white} />
         </TouchableOpacity>
       </View>
@@ -303,62 +254,62 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
-    backgroundColor: Colors.white,
-    paddingHorizontal: 20,
-    paddingTop: 70,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-    marginBottom: 20,
+  content: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  headerContent: {
+  headerCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
   },
   greeting: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.gray,
     fontWeight: '500',
   },
   pharmacyName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: Colors.primaryDark,
-    marginTop: 2,
   },
-  locationBadge: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     marginTop: 6,
-    gap: 4,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.primary,
     fontWeight: '500',
   },
-  notificationContainer: {
-    padding: 8,
-  },
   notificationButton: {
-    position: 'relative',
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: Colors.error,
     alignItems: 'center',
     justifyContent: 'center',
@@ -366,322 +317,238 @@ const styles = StyleSheet.create({
   },
   notificationCount: {
     color: Colors.white,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
   },
-  dateContainer: {
+  headerStats: {
+    marginTop: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  dateText: {
-    fontSize: 14,
-    color: Colors.darkGray,
-    fontWeight: '500',
+  headerStat: {
     flex: 1,
   },
-  timeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+  headerStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.primaryDark,
   },
-  timeText: {
+  headerStatLabel: {
     fontSize: 12,
-    color: Colors.white,
-    fontWeight: '600',
+    color: Colors.gray,
+    marginTop: 4,
   },
-  statsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+  headerDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: Colors.lightGray,
+    marginHorizontal: 16,
+  },
+  quickActions: {
+    marginTop: 18,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: Colors.primaryDark,
   },
-  seeAllText: {
-    fontSize: 14,
+  sectionnTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  sectionLink: {
+    fontSize: 13,
     color: Colors.primary,
     fontWeight: '600',
   },
-  statsGrid: {
+  kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 12,
+    marginBottom: 20,
   },
-  statCard: {
-    width: (width - 52) / 2,
-    padding: 16,
-    borderRadius: 16,
+  kpiCard: {
+    flex: 1,
+    minWidth: 150,
     backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
-  statHeader: {
+  kpiLabel: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginBottom: 6,
+  },
+  kpiValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+    marginBottom: 4,
+  },
+  kpiHint: {
+    fontSize: 11,
+    color: Colors.gray,
+  },
+  listCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  orderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  orderId: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primaryDark,
   },
-  trendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  orderCustomer: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 4,
+  },
+  typeBadge: {
+    marginTop: 6,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
     borderRadius: 10,
-    gap: 4,
+    backgroundColor: Colors.primaryLight,
   },
-  trendText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '800',
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
     color: Colors.primaryDark,
-    marginBottom: 2,
   },
-  statCurrency: {
-    fontSize: 12,
-    color: Colors.gray,
-    fontWeight: '500',
-    marginBottom: 8,
+  orderRight: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
-  statTitle: {
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  orderTotal: {
     fontSize: 13,
-    color: Colors.darkGray,
-    fontWeight: '500',
-    marginBottom: 12,
+    fontWeight: '600',
+    color: Colors.primaryDark,
   },
-  statFooter: {
-    marginTop: 'auto',
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 16,
   },
-  progressBar: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  metricsCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: Colors.white,
-  },
-  periodText: {
-    fontSize: 14,
+  emptyText: {
+    marginTop: 8,
+    fontSize: 13,
     color: Colors.gray,
-    fontWeight: '500',
   },
-  metricsGrid: {
+  insightCard: {
+    backgroundColor: Colors.primaryDark,
+    borderRadius: 18,
+    padding: 18,
+  },
+  insightHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  metricItem: {
-    flex: 1,
     alignItems: 'center',
+    marginBottom: 10,
   },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-  },
-  metricDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: Colors.gray,
-    marginBottom: 8,
-  },
-  metricProgress: {
-    width: '100%',
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  activitySection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  activityList: {
-    gap: 10,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.darkGray,
-    marginBottom: 2,
-  },
-  activityDescription: {
-    fontSize: 13,
-    color: Colors.gray,
-  },
-  activityRight: {
-    alignItems: 'flex-end',
-  },
-  activityTime: {
-    fontSize: 12,
-    color: Colors.gray,
-    marginBottom: 4,
-  },
-  activityAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-  },
-  alertCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: Colors.white,
-  },
-  alertHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  alertTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-  },
-  alertsList: {
-    gap: 12,
-  },
-  alertItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: Colors.lightGray,
-  },
-  alertIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  alertContent: {
-    flex: 1,
-  },
-  alertItemTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.darkGray,
-    marginBottom: 2,
-  },
-  alertItemText: {
-    fontSize: 13,
-    color: Colors.gray,
-  },
-  alertButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  alertButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  welcomeCard: {
-    marginHorizontal: 20,
-    marginBottom: 30,
-    padding: 24,
-    borderRadius: 16,
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 1,
-    borderColor: Colors.primaryTransparent,
-  },
-  welcomeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 16,
-  },
-  welcomeText: {
-    flex: 1,
-  },
-  welcomeTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-    marginBottom: 4,
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: Colors.darkGray,
-    lineHeight: 20,
-  },
-  welcomeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    gap: 8,
-  },
-  welcomeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  insightText: {
     color: Colors.white,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  insightButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  insightButtonText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  driverRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  driverRowLast: {
+    borderBottomWidth: 0,
+  },
+  driverName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primaryDark,
+  },
+  driverStatus: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 4,
+  },
+  driverPill: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  driverPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.primaryDark,
   },
 });
